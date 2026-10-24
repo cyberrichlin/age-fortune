@@ -1,4 +1,4 @@
-/* ========== 星辰运势 · 全局样式 ========== */
+/* ========== 生肖年龄合盘 · 全局样式 ========== */
 :root {
   --bg1: #0f0c29;
   --bg2: #302b63;
@@ -65,7 +65,7 @@ body {
   position: relative;
   z-index: 1;
   text-align: center;
-  padding: 46px 20px 10px;
+  padding: 46px 20px 6px;
 }
 
 .hero h1 {
@@ -86,43 +86,61 @@ body {
   letter-spacing: 1px;
 }
 
-/* ---------- 导航 Tabs ---------- */
-.tabs {
+/* ---------- 分界口径切换条 ---------- */
+.boundary-bar {
   position: relative;
   z-index: 1;
+  max-width: 860px;
+  margin: 22px auto 0;
+  padding: 14px 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow);
   display: flex;
-  justify-content: center;
   flex-wrap: wrap;
-  gap: 8px;
-  margin: 26px auto 8px;
-  max-width: 760px;
-  padding: 0 16px;
+  align-items: center;
+  gap: 10px;
 }
 
-.tab {
+.boundary-label {
+  font-size: 13.5px;
+  color: var(--text-dim);
+  margin-right: 2px;
+}
+
+.bound-btn {
   border: 1px solid var(--card-border);
   background: rgba(255, 255, 255, 0.06);
   color: var(--text-dim);
-  font-size: 15px;
-  padding: 10px 20px;
+  font-size: 13.5px;
+  padding: 8px 16px;
   border-radius: 999px;
   cursor: pointer;
-  transition: all 0.25s ease;
-  backdrop-filter: blur(8px);
+  transition: all 0.2s;
   font-family: inherit;
 }
 
-.tab:hover {
+.bound-btn:hover {
   background: rgba(255, 255, 255, 0.12);
   color: var(--text);
 }
 
-.tab.active {
+.bound-btn.active {
   background: linear-gradient(120deg, var(--primary), var(--primary-light));
   color: #fff;
   border-color: transparent;
-  box-shadow: 0 6px 20px rgba(139, 124, 246, 0.45);
   font-weight: 600;
+  box-shadow: 0 4px 14px rgba(139, 124, 246, 0.4);
+}
+
+.boundary-note {
+  width: 100%;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
+  padding-top: 10px;
 }
 
 /* ---------- 主体容器 ---------- */
@@ -135,7 +153,6 @@ body {
 }
 
 .panel {
-  display: none;
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: var(--radius);
@@ -145,8 +162,8 @@ body {
   animation: fadeIn 0.35s ease;
 }
 
-.panel.active {
-  display: block;
+.panel + .panel {
+  margin-top: 16px;
 }
 
 @keyframes fadeIn {
@@ -173,6 +190,58 @@ body {
   margin: 18px 0 10px;
   border-left: 3px solid var(--primary);
   padding-left: 10px;
+}
+
+/* ---------- 更多玩法折叠区 ---------- */
+.more-panel {
+  position: relative;
+  z-index: 1;
+  margin-top: 18px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.more-panel summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 16px 22px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--primary-light);
+  letter-spacing: 1px;
+  transition: background 0.2s;
+  user-select: none;
+}
+
+.more-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.more-panel summary::before {
+  content: "▸ ";
+  display: inline-block;
+  transition: transform 0.2s;
+  color: var(--gold);
+}
+
+.more-panel[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.more-panel summary:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.more-panel .panel {
+  box-shadow: none;
+  border: none;
+  border-radius: 0;
+  border-top: 1px solid var(--card-border);
+  animation: none;
 }
 
 /* ---------- 表单 ---------- */
@@ -235,6 +304,28 @@ body {
 
 .btn-primary:active {
   transform: translateY(0);
+}
+
+.btn-secondary {
+  display: inline-block;
+  margin-top: 14px;
+  border: 1px solid rgba(124, 196, 248, 0.45);
+  background: rgba(124, 196, 248, 0.12);
+  color: var(--blue);
+  font-family: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  padding: 11px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, transform 0.15s;
+}
+
+.btn-secondary:hover {
+  background: rgba(124, 196, 248, 0.22);
+  color: #fff;
+  transform: translateY(-1px);
 }
 
 /* ---------- 分段选择 ---------- */
@@ -345,6 +436,126 @@ body {
 .card .dim {
   color: var(--text-dim);
   font-size: 13px;
+}
+
+.note-tip {
+  color: var(--text-dim);
+  font-size: 12.5px !important;
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
+  padding-top: 8px;
+  margin-top: 8px;
+}
+
+/* ---------- 生肖关系徽章 ---------- */
+.rel-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.rel-badge {
+  font-size: 14px;
+  font-weight: 700;
+  padding: 4px 14px;
+  border-radius: 999px;
+  border: 1px solid;
+}
+
+.rel-liuhe, .rel-sanhe {
+  background: rgba(123, 216, 143, 0.18);
+  color: var(--green);
+  border-color: rgba(123, 216, 143, 0.45);
+}
+
+.rel-liuchong, .rel-xing {
+  background: rgba(244, 125, 125, 0.16);
+  color: var(--danger);
+  border-color: rgba(244, 125, 125, 0.45);
+}
+
+.rel-liuhai {
+  background: rgba(246, 193, 92, 0.18);
+  color: var(--gold);
+  border-color: rgba(246, 193, 92, 0.45);
+}
+
+.rel-other {
+  background: rgba(124, 196, 248, 0.16);
+  color: var(--blue);
+  border-color: rgba(124, 196, 248, 0.45);
+}
+
+/* ---------- 年龄差独立卡片 ---------- */
+.age-card h4 {
+  margin-top: 0;
+}
+
+.age-diff {
+  font-size: 17px;
+  margin: 6px 0 10px;
+  color: var(--text);
+}
+
+.age-diff b {
+  font-size: 24px;
+  color: var(--gold);
+  font-weight: 800;
+}
+
+.age-now {
+  font-size: 13.5px;
+  color: var(--text);
+  margin: 3px 0;
+}
+
+.age-now b {
+  color: var(--primary-light);
+}
+
+/* ---------- 星座独立卡片 ---------- */
+.sign-pair {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.sign-item {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+}
+
+.sign-item b {
+  display: block;
+  font-size: 17px;
+  color: var(--primary-light);
+}
+
+.sign-item span {
+  display: block;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 4px 0;
+}
+
+.sign-item small {
+  display: block;
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.sign-vs {
+  align-self: center;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--accent);
 }
 
 /* ---------- 评分圆环 ---------- */
@@ -486,7 +697,7 @@ body {
   font-size: 12.5px;
 }
 
-.yiji .ji + .tags span {
+.yiji .ji .tags span {
   background: rgba(244, 125, 125, 0.12);
   color: var(--danger);
   border-color: rgba(244, 125, 125, 0.35);
@@ -537,10 +748,91 @@ footer {
   .hero { padding: 34px 16px 6px; }
   .panel { padding: 20px 16px; }
   .form-grid { grid-template-columns: 1fr; }
-  .tabs { gap: 6px; }
-  .tab { font-size: 13.5px; padding: 8px 14px; flex: 1 1 auto; }
+  .bound-btn { font-size: 12.5px; padding: 7px 12px; }
+  .sign-pair { flex-direction: column; }
+  .sign-vs { align-self: center; }
   .yiji { grid-template-columns: 1fr; }
   .score-head { justify-content: center; text-align: center; }
   .ring-wrap { width: 120px; height: 120px; }
   .ring-wrap svg { width: 120px; height: 120px; }
+}
+
+/* ---------- 首屏入口导航（生日速查 / 双人合盘） ---------- */
+.entry-nav {
+  display: flex;
+  gap: 10px;
+  margin: 4px 0 18px;
+}
+
+.entry-btn {
+  flex: 1;
+  padding: 14px 10px;
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: 14px;
+  border: 1px solid var(--card-border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.entry-btn:hover,
+.entry-btn:focus-visible {
+  background: rgba(124, 196, 248, 0.12);
+  border-color: rgba(124, 196, 248, 0.5);
+  outline: none;
+}
+
+.entry-btn.active {
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  border-color: transparent;
+  color: #fff;
+}
+
+/* ---------- 临界日提示 ---------- */
+.critical-note {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(246, 193, 92, 0.45);
+  background: rgba(246, 193, 92, 0.12);
+  color: var(--gold);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.critical-note strong {
+  color: var(--gold);
+}
+
+/* ---------- 关系行换行（主要+兼有徽章多时避免溢出） ---------- */
+.rel-line {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+/* ---------- 全局横向溢出保护（移动端） ---------- */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.container,
+.panel,
+.card,
+.result,
+.form-grid {
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 640px) {
+  .entry-nav { gap: 8px; }
+  .entry-btn { font-size: 15px; padding: 12px 8px; }
+  .rel-line { font-size: 13px; }
+  .age-diff { font-size: 15px; }
+  .age-diff b { font-size: 20px; }
+  .critical-note { font-size: 12.5px; }
 }

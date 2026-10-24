@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>星辰运势 · 生辰命理测算</title>
+<title>生肖年龄合盘 · 情侣契合测算</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,78 +11,50 @@
 <div class="stars" aria-hidden="true"></div>
 
 <header class="hero">
-  <h1>✦ 星辰运势 ✦</h1>
-  <p>生辰八字 · 星座属相 · 每日运势 · 契合测评</p>
+  <h1>✦ 生肖年龄合盘 ✦</h1>
+  <p>生肖契合 · 年龄差 · 星座参考 · 每日运势 · 性格搭配</p>
 </header>
 
-<nav class="tabs" aria-label="功能导航">
-  <button class="tab active" data-tab="birth">生日测算</button>
-  <button class="tab" data-tab="daily">每日运势</button>
-  <button class="tab" data-tab="match">情侣契合</button>
-  <button class="tab" data-tab="personality">性格搭配</button>
-</nav>
+<!-- 分界口径切换 -->
+<div class="boundary-bar">
+  <span class="boundary-label">生肖分界口径：</span>
+  <button id="btn-spring" class="bound-btn active" type="button">按春节（农历正月初一）</button>
+  <button id="btn-lichun" class="bound-btn" type="button">按立春（节气）</button>
+  <div id="boundary-note" class="boundary-note">本页采用：按春节（农历正月初一）分界 · 默认按中国标准时间 · 采用民间传统说法，仅供娱乐参考</div>
+</div>
 
 <main class="container">
 
-  <!-- ============ 生日测算 ============ -->
-  <section id="birth" class="panel active">
-    <h2>🌙 我的生辰测算</h2>
-    <p class="sub">手动输入出生年月日与时辰（时辰可留空），查看你的星座、属相与运势密码</p>
+  <!-- ============ 首屏入口：生日速查 / 双人合盘 ============ -->
+  <nav class="entry-nav" aria-label="主要功能入口">
+    <button id="entry-quick" class="entry-btn active" type="button">🎂 生日速查</button>
+    <button id="entry-match" class="entry-btn" type="button">💞 双人合盘</button>
+  </nav>
 
-    <div class="form-grid">
-      <label>出生年份
-        <input type="text" id="birth-year" placeholder="如：1995（1900-2100）" inputmode="numeric">
-      </label>
-      <label>出生月份
-        <input type="text" id="birth-month" placeholder="1-12" inputmode="numeric">
-      </label>
-      <label>出生日期
-        <input type="text" id="birth-day" placeholder="如：15" inputmode="numeric">
-      </label>
-      <label>出生时辰（选填）
-        <input type="text" id="birth-shichen" placeholder="如：子 或 子时，可留空">
-      </label>
+  <!-- ============ 生日速查（首屏默认显示，流程最短） ============ -->
+  <section id="quick" class="panel quick-panel">
+    <h2>🎂 生日速查</h2>
+    <p class="sub">只填一个公历生日即可查询：生肖（含分界口径）、星座、农历生日与传统民俗参考。本功能不收集、不上传、不写入网址，所有计算都在本机页面内完成。</p>
+    <div class="form-grid single">
+      <label for="quick-date">你的公历生日</label>
+      <input type="date" id="quick-date" min="1900-01-31" max="2100-12-31">
+      <p class="field-tip">支持手机日期选择器；范围 1900-01-31 至 2100-12-31，不能晚于今天。出生时间（时辰）与出生地非必需，未填写不影响生肖与星座查询。</p>
     </div>
-
-    <button id="btn-birth" class="btn-primary">开始测算</button>
-    <div id="birth-result" class="result" aria-live="polite"></div>
+    <button id="btn-quick" class="btn-primary" type="button">开始速查</button>
+    <div id="quick-result" class="result" aria-live="polite"></div>
   </section>
 
-  <!-- ============ 每日运势 ============ -->
-  <section id="daily" class="panel">
-    <h2>☀️ 每日运势</h2>
-    <p class="sub">手动输入年月日（默认今天）与时辰（选填），查看当日的综合运势与分项指南</p>
-
-    <div class="form-grid">
-      <label>年
-        <input type="text" id="daily-year" placeholder="如：2026（1900-2100）" inputmode="numeric">
-      </label>
-      <label>月
-        <input type="text" id="daily-month" placeholder="1-12" inputmode="numeric">
-      </label>
-      <label>日
-        <input type="text" id="daily-day" placeholder="如：23" inputmode="numeric">
-      </label>
-      <label>时辰（选填）
-        <input type="text" id="daily-shichen" placeholder="如：午 或 午时，可留空">
-      </label>
-    </div>
-
-    <button id="btn-daily" class="btn-primary">查看运势</button>
-    <div id="daily-result" class="result" aria-live="polite"></div>
-  </section>
-
-  <!-- ============ 情侣契合 ============ -->
-  <section id="match" class="panel">
-    <h2>💞 情侣契合度</h2>
-    <p class="sub">两种方式任选其一：A 输入对方出生年月日，或 B 输入对方出生年份+星座</p>
+  <!-- ============ 双人合盘（独立流程） ============ -->
+  <section id="match" class="panel hidden">
+    <h2>💞 双人合盘 · 生肖年龄合盘</h2>
+    <p class="sub">分别输入双方公历出生年月日，分块查看生肖关系、民俗趣味参考值、星座参考与实际年龄差（年龄差独立展示，不参与评分）</p>
 
     <div class="seg" role="tablist" aria-label="输入方式选择">
-      <button class="seg-btn active" data-mode="a">方式A · 对方生日</button>
-      <button class="seg-btn" data-mode="b">方式B · 年份+星座</button>
+      <button class="seg-btn active" data-mode="a" type="button">方式A · 双方公历生日</button>
+      <button class="seg-btn" data-mode="b" type="button">方式B · 对方仅公历年份+星座</button>
     </div>
 
-    <h3 class="block-title">我的出生信息</h3>
+    <h3 class="block-title">我的出生信息（公历）</h3>
     <div class="form-grid">
       <label>我的出生年份
         <input type="text" id="match-my-year" placeholder="如：1995（1900-2100）" inputmode="numeric">
@@ -111,7 +83,7 @@
     </div>
 
     <div id="match-b" class="hidden">
-      <h3 class="block-title">对方出生信息（方式B）</h3>
+      <h3 class="block-title">对方出生信息（方式B · 公历年份，无精确年龄差）</h3>
       <div class="form-grid">
         <label>对方出生年份
           <input type="text" id="match-her-year2" placeholder="如：1996（1900-2100）" inputmode="numeric">
@@ -122,44 +94,95 @@
       </div>
     </div>
 
-    <button id="btn-match" class="btn-primary">查看契合度</button>
+    <button id="btn-match" class="btn-primary" type="button">查看合盘契合度</button>
     <div id="match-result" class="result" aria-live="polite"></div>
   </section>
 
-  <!-- ============ 性格搭配 ============ -->
-  <section id="personality" class="panel">
-    <h2>🧠 性格搭配测评</h2>
-    <p class="sub">手动输入双方 MBTI 性格类型，结合出生年份与星座，得出独立于契合度的整体评分</p>
+  <!-- ============ 更多玩法（折叠区） ============ -->
+  <details class="more-panel">
+    <summary>更多玩法 · 每日运势 / 我的生辰测算 / MBTI 性格搭配</summary>
 
-    <div class="form-grid">
-      <label>我的性格类型
-        <input type="text" id="per-my-type" placeholder="如：INTJ（大小写不限）">
-      </label>
-      <label>对方性格类型
-        <input type="text" id="per-her-type" placeholder="如：INFP（大小写不限）">
-      </label>
-      <label>我的出生年份
-        <input type="text" id="per-my-year" placeholder="如：1995（1900-2100）" inputmode="numeric">
-      </label>
-      <label>我的星座
-        <input type="text" id="per-my-sign" placeholder="如：狮子座">
-      </label>
-      <label>对方出生年份
-        <input type="text" id="per-her-year" placeholder="如：1996（1900-2100）" inputmode="numeric">
-      </label>
-      <label>对方星座
-        <input type="text" id="per-her-sign" placeholder="如：双鱼座">
-      </label>
-    </div>
+    <section id="daily" class="panel">
+      <h2>☀️ 每日运势</h2>
+      <p class="sub">手动输入年月日（默认今天）与时辰（选填），查看当日的综合运势与分项指南</p>
 
-    <button id="btn-personality" class="btn-primary">查看搭配评分</button>
-    <div id="personality-result" class="result" aria-live="polite"></div>
-  </section>
+      <div class="form-grid">
+        <label>年
+          <input type="text" id="daily-year" placeholder="如：2026（1900-2100）" inputmode="numeric">
+        </label>
+        <label>月
+          <input type="text" id="daily-month" placeholder="1-12" inputmode="numeric">
+        </label>
+        <label>日
+          <input type="text" id="daily-day" placeholder="如：23" inputmode="numeric">
+        </label>
+        <label>时辰（选填）
+          <input type="text" id="daily-shichen" placeholder="如：午 或 午时，可留空">
+        </label>
+      </div>
+
+      <button id="btn-daily" class="btn-primary" type="button">查看运势</button>
+      <div id="daily-result" class="result" aria-live="polite"></div>
+    </section>
+
+    <section id="birth" class="panel">
+      <h2>🌙 我的生辰测算</h2>
+      <p class="sub">手动输入出生年月日与时辰（时辰可留空），查看你的星座、属相与运势密码</p>
+
+      <div class="form-grid">
+        <label>出生年份
+          <input type="text" id="birth-year" placeholder="如：1995（1900-2100）" inputmode="numeric">
+        </label>
+        <label>出生月份
+          <input type="text" id="birth-month" placeholder="1-12" inputmode="numeric">
+        </label>
+        <label>出生日期
+          <input type="text" id="birth-day" placeholder="如：15" inputmode="numeric">
+        </label>
+        <label>出生时辰（选填）
+          <input type="text" id="birth-shichen" placeholder="如：子 或 子时，可留空">
+        </label>
+      </div>
+
+      <button id="btn-birth" class="btn-primary" type="button">开始测算</button>
+      <div id="birth-result" class="result" aria-live="polite"></div>
+    </section>
+
+    <section id="personality" class="panel">
+      <h2>🧠 性格搭配测评</h2>
+      <p class="sub">手动输入双方 MBTI 性格类型，结合出生年份与星座（星座仅作参考），得出独立于生肖合盘的搭配评分</p>
+
+      <div class="form-grid">
+        <label>我的性格类型
+          <input type="text" id="per-my-type" placeholder="如：INTJ（大小写不限）">
+        </label>
+        <label>对方性格类型
+          <input type="text" id="per-her-type" placeholder="如：INFP（大小写不限）">
+        </label>
+        <label>我的出生年份
+          <input type="text" id="per-my-year" placeholder="如：1995（1900-2100）" inputmode="numeric">
+        </label>
+        <label>我的星座
+          <input type="text" id="per-my-sign" placeholder="如：狮子座">
+        </label>
+        <label>对方出生年份
+          <input type="text" id="per-her-year" placeholder="如：1996（1900-2100）" inputmode="numeric">
+        </label>
+        <label>对方星座
+          <input type="text" id="per-her-sign" placeholder="如：双鱼座">
+        </label>
+      </div>
+
+      <button id="btn-personality" class="btn-primary" type="button">查看搭配评分</button>
+      <div id="personality-result" class="result" aria-live="polite"></div>
+    </section>
+  </details>
 
 </main>
 
 <footer>
-  <p>本工具由传统生肖、星座与性格理论结合趣味算法生成，仅供娱乐参考</p>
+  <p>本工具由传统生肖、星座与性格理论结合趣味算法生成，采用民间传统说法，仅供文化娱乐参考。</p>
+  <p>不提供科学预测，不构成任何重大现实决策依据；全部计算在本机完成，不上传、不保存任何个人信息。</p>
 </footer>
 
 <script src="script.js"></script>

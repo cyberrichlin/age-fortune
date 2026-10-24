@@ -1,4 +1,5 @@
-/* ========== 星辰运势 · 核心逻辑 ========== */
+/* ========== 生肖年龄合盘 · 核心逻辑 ========== */
+/* 页面聚焦「生肖年龄合盘」：情侣契合为主功能，星座仅作独立娱乐参考 */
 
 /* ---------------- 工具函数 ---------------- */
 function hashCode(str) {
@@ -104,7 +105,8 @@ const ANIMALS = ["猴", "鸡", "狗", "猪", "鼠", "牛", "虎", "兔", "龙", 
 /* ---------------- 中国农历转换（1900-2100 查表法，含闰月/大小月） ---------------- */
 /* 每项编码一个农历年：低4位=闰月月份(0为无闰)；0x10000=闰月大月(30天)；
    0x8000~0x10 依次对应正月~腊月，1为大月(30天)、0为小月(29天)。
-   数据由天文历（寿星历）生成并对 1900-2100 全量校验，0 误差。 */
+   数据由天文历（寿星历/sxtwl）生成并对 1900-2100 全量校验，0 误差。
+   农历数据起点：1900-01-31（农历正月初一），此前的公历日期无有效农历。 */
 const LUNAR_INFO = [
   0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
   0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,
@@ -205,19 +207,91 @@ function lunarDateText(l) {
   return l.year + "年" + (l.isLeap ? "闰" : "") + LUNAR_MONTH_NAMES[l.month - 1] + "月" + LUNAR_DAY_NAMES[l.day - 1];
 }
 
+/* ---------------- 生肖分界口径 ---------------- */
+/* 默认按春节（农历正月初一）；可切换按立春（节气，约公历2月3-5日）。
+   LICHUN[y-1900] 表示公历 y 年立春落在 2 月的第几天（由天文历 sxtwl 对 1900-2100 逐年精确生成）。 */
+const LICHUN = [
+  4,4,5,5,5,4,5,5,5,4,5,5,5,4,4,
+  5,5,4,4,5,5,4,4,5,5,4,4,5,5,4,
+  4,5,5,4,4,5,5,4,4,5,5,4,4,5,5,
+  4,4,4,5,4,4,4,5,4,4,4,5,4,4,4,
+  5,4,4,4,5,4,4,4,5,4,4,4,5,4,4,
+  4,5,4,4,4,5,4,4,4,4,4,4,4,4,4,
+  4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+  4,4,4,4,4,4,4,4,4,4,4,4,3,4,4,
+  4,3,4,4,4,3,4,4,4,3,4,4,4,3,4,
+  4,4,3,4,4,4,3,4,4,4,3,4,4,4,3,
+  3,4,4,3,3,4,4,3,3,4,4,3,3,4,4,
+  3,3,4,4,3,3,4,4,3,3,4,4,3,3,4,
+  4,3,3,3,4,3,3,3,4,3,3,3,4,3,3,
+  3,4,3,3,3,4
+];
+
+/* 当前分界口径：spring=按春节，lichun=按立春 */
+var BOUNDARY = "spring";
+
+function boundaryText() {
+  return BOUNDARY === "lichun" ? "按立春（节气）分界" : "按春节（农历正月初一）分界";
+}
+
+/* 获取该公历日期对应的"生肖年"（农历年口径） */
+function getLunarYear(y, m, d) {
+  if (BOUNDARY === "lichun") {
+    return (m > 2 || (m === 2 && d >= LICHUN[y - 1900])) ? y : y - 1;
+  }
+  return lunarFromSolar(y, m, d).year;
+}
+
+/* 仅知道公历年份（无月日）时的生肖年估算 */
+function getLunarYearByYearOnly(y) {
+  if (BOUNDARY === "lichun") return y; /* 立春在2月初，年中必已过，生肖年即公历年 */
+  return lunarFromSolar(y, 6, 15).year; /* 6月15日必已过农历新年 */
+}
+
+/* 属相：统一按生肖年（农历口径）计算 */
+function getAnimal(y, m, d) {
+  return ANIMALS[((getLunarYear(y, m, d) % 12) + 12) % 12];
+}
+
+function getAnimalByYearOnly(y) {
+  return ANIMALS[((getLunarYearByYearOnly(y) % 12) + 12) % 12];
+}
+
+/* 生肖年干支（用于纳音五行展示） */
+const GAN = "甲乙丙丁戊己庚辛壬癸";
+const ZHI = "子丑寅卯辰巳午未申酉戌亥";
+function ganzhi(ly) {
+  const idx = ((ly - 4) % 60 + 60) % 60;
+  return GAN[idx % 10] + ZHI[idx % 12];
+}
+
+/* 纳音五行（按农历年干支，30组一组循环）；口径：农历年干支纳音 */
+const NA_YIN_FIVE = [
+  "金", "火", "木", "土", "金",
+  "火", "水", "土", "金", "木",
+  "水", "土", "火", "木", "金",
+  "金", "火", "木", "土", "金",
+  "火", "水", "土", "金", "木",
+  "水", "土", "火", "木", "金"
+];
+function naYinFive(ly) {
+  const idx = ((ly - 4) % 60 + 60) % 60;
+  return NA_YIN_FIVE[idx >> 1];
+}
+
 const ANIMAL_INFO = {
-  "鼠": { element: "水", personality: "机智灵活、观察力强、善于交际，精于规划与积累。", fortune: "本命五行属水，水主智慧。今年贵人运平稳，事业宜稳中求进，感情上多主动沟通可得良缘。" },
-  "牛": { element: "土", personality: "踏实稳重、坚韧执着，责任心强，是可靠的实干派。", fortune: "本命五行属土，土主信义。今年财运稳健，适合长期布局；感情需多些浪漫表达。" },
-  "虎": { element: "木", personality: "果敢自信、行动力强，富有领导力与开拓精神。", fortune: "本命五行属木，木主生长。今年利于开拓新局，注意控制急躁情绪，桃花旺盛。" },
-  "兔": { element: "木", personality: "温和细腻、善解人意，人缘极佳，处事圆融。", fortune: "本命五行属木，木主仁和。今年社交运佳，宜广结善缘；事业上贵人助力明显。" },
-  "龙": { element: "土", personality: "气宇轩昂、志向远大，才华横溢，自带气场。", fortune: "本命五行属土，土主权威。今年事业运强劲，宜大胆作为；感情注意包容对方。" },
-  "蛇": { element: "火", personality: "冷静理性、洞察力敏锐，善于谋划，魅力内敛。", fortune: "本命五行属火，火主明达。今年财运稳中有升，注意劳逸结合；感情渐入佳境。" },
-  "马": { element: "火", personality: "热情奔放、自由洒脱，行动敏捷，乐观积极。", fortune: "本命五行属火，火主热情。今年出行运佳，事业动力十足；感情热烈但需控制冲动。" },
-  "羊": { element: "土", personality: "温柔善良、艺术细胞丰富，乐于助人，内心柔软。", fortune: "本命五行属土，土主包容。今年人缘极佳，适合合作共赢；感情上易遇知己。" },
-  "猴": { element: "金", personality: "聪明机敏、幽默风趣，应变能力强，点子多多。", fortune: "本命五行属金，金主锐气。今年机遇较多，宜抓住风口；感情上真诚相待为上。" },
-  "鸡": { element: "金", personality: "勤奋自律、讲究条理，外表自信，执行力强。", fortune: "本命五行属金，金主肃杀。今年事业精进，理财宜稳健；感情需多些耐心倾听。" },
-  "狗": { element: "土", personality: "忠诚可靠、正义感强，踏实务实，是值得信赖的伙伴。", fortune: "本命五行属土，土主厚德。今年运势平稳回升，适合深耕积累；感情稳定温馨。" },
-  "猪": { element: "水", personality: "憨厚随和、心态乐观，福气满满，人缘良好。", fortune: "本命五行属水，水主润泽。今年财运不错，宜储蓄理财；感情上易遇真心人。" }
+  "鼠": { element: "水", personality: "机智灵活、观察力强、善于交际，精于规划与积累。", fortune: "本命五行属水，水主智慧。传统生肖文化中鼠象征机敏与积累，宜稳中求进、多主动沟通。" },
+  "牛": { element: "土", personality: "踏实稳重、坚韧执着，责任心强，是可靠的实干派。", fortune: "本命五行属土，土主信义。传统生肖文化中牛象征勤恳与承担，宜长期布局，感情需多些浪漫表达。" },
+  "虎": { element: "木", personality: "果敢自信、行动力强，富有领导力与开拓精神。", fortune: "本命五行属木，木主生长。传统生肖文化中虎象征勇气与开拓，宜把握新局，注意控制急躁情绪。" },
+  "兔": { element: "木", personality: "温和细腻、善解人意，人缘极佳，处事圆融。", fortune: "本命五行属木，木主仁和。传统生肖文化中兔象征温和与人缘，宜广结善缘。" },
+  "龙": { element: "土", personality: "气宇轩昂、志向远大，才华横溢，自带气场。", fortune: "本命五行属土，土主权威。传统生肖文化中龙象征志向与气度，宜大胆作为，感情注意包容对方。" },
+  "蛇": { element: "火", personality: "冷静理性、洞察力敏锐，善于谋划，魅力内敛。", fortune: "本命五行属火，火主明达。传统生肖文化中蛇象征智慧与内敛，宜劳逸结合。" },
+  "马": { element: "火", personality: "热情奔放、自由洒脱，行动敏捷，乐观积极。", fortune: "本命五行属火，火主热情。传统生肖文化中马象征奔放与进取，宜稳步前行，感情注意控制冲动。" },
+  "羊": { element: "土", personality: "温柔善良、艺术细胞丰富，乐于助人，内心柔软。", fortune: "本命五行属土，土主包容。传统生肖文化中羊象征温善与合作，宜合作共赢。" },
+  "猴": { element: "金", personality: "聪明机敏、幽默风趣，应变能力强，点子多多。", fortune: "本命五行属金，金主锐气。传统生肖文化中猴象征机敏与变通，宜真诚相待。" },
+  "鸡": { element: "金", personality: "勤奋自律、讲究条理，外表自信，执行力强。", fortune: "本命五行属金，金主肃杀。传统生肖文化中鸡象征勤勉与条理，理财宜稳健，感情需多些耐心倾听。" },
+  "狗": { element: "土", personality: "忠诚可靠、正义感强，踏实务实，是值得信赖的伙伴。", fortune: "本命五行属土，土主厚德。传统生肖文化中狗象征忠诚与可靠，宜深耕积累。" },
+  "猪": { element: "水", personality: "憨厚随和、心态乐观，福气满满，人缘良好。", fortune: "本命五行属水，水主润泽。传统生肖文化中猪象征随和与福气，宜储蓄理财。" }
 };
 
 const MBTI_LIST = [
@@ -258,14 +332,18 @@ const SHICHEN_TEXT = {
 const YI_POOL = ["出行会友", "签约洽谈", "学习充电", "运动健身", "表白心意", "整理规划", "投资稳健", "冥想静心", "家庭聚餐", "复盘总结"];
 const JI_POOL = ["熬夜透支", "冲动消费", "口舌争执", "轻信他人", "长途奔波", "重大决策", "借贷担保", "冒险投机"];
 
-/* ---------------- 输入校验（非法输入弹窗且不计算结果） ---------------- */
+/* ---------------- 输入校验（严格数字校验，非法输入弹窗且不计算结果） ---------------- */
 const YEAR_MIN = 1900;
 const YEAR_MAX = 2100;
 
 function parseYear(val, label) {
   const v = String(val == null ? "" : val).trim();
+  if (!/^\d+$/.test(v)) {
+    alert(label + "年份必须是纯数字，请重新输入");
+    return null;
+  }
   const n = parseInt(v, 10);
-  if (v === "" || isNaN(n) || n < YEAR_MIN || n > YEAR_MAX) {
+  if (n < YEAR_MIN || n > YEAR_MAX) {
     alert(label + "年份需在" + YEAR_MIN + "-" + YEAR_MAX + "之间，请重新输入");
     return null;
   }
@@ -274,8 +352,12 @@ function parseYear(val, label) {
 
 function parseMonth(val, label) {
   const v = String(val == null ? "" : val).trim();
+  if (!/^\d+$/.test(v)) {
+    alert(label + "月份必须是纯数字，请重新输入");
+    return null;
+  }
   const n = parseInt(v, 10);
-  if (v === "" || isNaN(n) || n < 1 || n > 12) {
+  if (n < 1 || n > 12) {
     alert(label + "月份只能在1-12之间，请重新输入");
     return null;
   }
@@ -292,13 +374,26 @@ function daysInMonth(year, month) {
 
 function parseDay(val, label, year, month) {
   const v = String(val == null ? "" : val).trim();
+  if (!/^\d+$/.test(v)) {
+    alert(label + "日期必须是纯数字，请重新输入");
+    return null;
+  }
   const n = parseInt(v, 10);
   const max = daysInMonth(year, month);
-  if (v === "" || isNaN(n) || n < 1 || n > max) {
+  if (n < 1 || n > max) {
     alert(label + "日期超出范围：" + month + "月只有" + max + "天，请重新输入");
     return null;
   }
   return n;
+}
+
+/* 农历数据边界检查：1900-01-31 起才有效 */
+function checkLunarRange(y, m, d) {
+  if (y === YEAR_MIN && (m < 1 || (m === 1 && d < 31))) {
+    alert("该日期超出农历支持范围（农历数据自 1900-01-31 起），请重新输入");
+    return false;
+  }
+  return true;
 }
 
 function parseShichen(val, allowEmpty) {
@@ -342,31 +437,7 @@ function getSign(month, day) {
   return "摩羯座";
 }
 
-/* 属相：统一按农历年计算。传入完整公历日期时精确转换；
-   未提供月/日（如契合度B类仅年份）时，按该公历年份的年中参考点（必已过农历新年）估算。 */
-function getAnimal(year, month, day) {
-  let ly = year;
-  if (month && day) {
-    ly = lunarFromSolar(year, month, day).year;
-  } else {
-    ly = lunarFromSolar(year, 6, 15).year;
-  }
-  return ANIMALS[((ly % 12) + 12) % 12];
-}
-
-function getSignScore(s1, s2) {
-  if (s1 === s2) return 78;
-  const e1 = ELEMENT[s1], e2 = ELEMENT[s2];
-  if (e1 === e2) return 86;
-  if ((e1 === "火" && e2 === "风") || (e1 === "风" && e2 === "火")) return 82;
-  if ((e1 === "土" && e2 === "水") || (e1 === "水" && e2 === "土")) return 80;
-  if ((e1 === "风" && e2 === "水") || (e1 === "水" && e2 === "风")) return 72;
-  if ((e1 === "火" && e2 === "土") || (e1 === "土" && e2 === "火")) return 70;
-  if ((e1 === "风" && e2 === "土") || (e1 === "土" && e2 === "风")) return 66;
-  if ((e1 === "火" && e2 === "水") || (e1 === "水" && e2 === "火")) return 60;
-  return 72;
-}
-
+/* ---------------- 生肖关系（六合/三合/六冲/六害/相刑/其他） ---------------- */
 const LIUHE = { "鼠": "牛", "牛": "鼠", "虎": "猪", "猪": "虎", "兔": "狗", "狗": "兔", "龙": "鸡", "鸡": "龙", "蛇": "猴", "猴": "蛇", "马": "羊", "羊": "马" };
 const LIUCHONG = { "鼠": "马", "马": "鼠", "牛": "羊", "羊": "牛", "虎": "猴", "猴": "虎", "兔": "鸡", "鸡": "兔", "龙": "狗", "狗": "龙", "蛇": "猪", "猪": "蛇" };
 const SANHE = {
@@ -375,15 +446,180 @@ const SANHE = {
   "蛇": ["鸡", "牛"], "鸡": ["蛇", "牛"], "牛": ["蛇", "鸡"],
   "猪": ["兔", "羊"], "兔": ["猪", "羊"], "羊": ["猪", "兔"]
 };
+const LIUHAI = { "鼠": "羊", "羊": "鼠", "牛": "马", "马": "牛", "虎": "蛇", "蛇": "虎", "兔": "龙", "龙": "兔", "猴": "猪", "猪": "猴", "鸡": "狗", "狗": "鸡" };
+/* 相刑：含寅巳申/丑戌未三刑与辰午酉亥自刑（对称处理） */
+const XING_PAIRS = [
+  ["鼠", "兔"], ["虎", "蛇"], ["虎", "猴"], ["蛇", "猴"], ["牛", "狗"], ["牛", "羊"], ["狗", "羊"],
+  ["龙", "龙"], ["马", "马"], ["鸡", "鸡"], ["猪", "猪"]
+];
 
-function getAnimalScore(a1, a2) {
-  if (a1 === a2) return 70;
-  if (LIUHE[a1] === a2) return 92;
-  if (LIUCHONG[a1] === a2) return 42;
-  if (SANHE[a1] && SANHE[a1].includes(a2)) return 78;
-  return 63;
+const RELATION_TEXT = {
+  "liuhe": {
+    desc: "六合为传统吉配（子丑合、寅亥合、卯戌合、辰酉合、巳申合、午未合），传统认为彼此缘分深厚、相互扶持。",
+    advice: "相处建议：顺其自然保持默契，遇事多商量，感情基础稳固。"
+  },
+  "sanhe": {
+    desc: "三合为三合局（申子辰、寅午戌、巳酉丑、亥卯未），与「三会」（寅卯辰会木、巳午未会火、申酉戌会金、亥子丑会水等方位会局）是两种不同说法，此处按三合局口径：传统认为同气连枝、志趣相投。",
+    advice: "相处建议：多一起规划未来，共同的圈子与爱好是感情的黏合剂。"
+  },
+  "liuchong": {
+    desc: "六冲（子午冲、丑未冲、寅申冲、卯酉冲、辰戌冲、巳亥冲），传统认为双方性格差异较大、容易起摩擦。",
+    advice: "相处建议：避免针锋相对，重要决定多冷静沟通，差异之中亦有互补。"
+  },
+  "liuhai": {
+    desc: "六害（子未害、丑午害、寅巳害、卯辰害、申亥害、酉戌害），传统认为相处中易生误会与隔阂。",
+    advice: "相处建议：坦诚表达感受，减少猜疑，把话说开能化解大部分矛盾。"
+  },
+  "xing": {
+    desc: "相刑（含寅巳申、丑戌未三刑，及辰午酉亥自刑），传统认为易有言语摩擦与彼此消耗。",
+    advice: "相处建议：设定清晰的边界，避免情绪化争执，多些包容与体谅。"
+  },
+  "other": {
+    desc: "不属于传统六合、三合、六冲、六害、相刑关系，属于普通组合。",
+    advice: "相处建议：日常多创造共同回忆，用心陪伴比什么都重要。"
+  }
+};
+
+function isXing(a1, a2) {
+  return XING_PAIRS.some(function (p) {
+    return (p[0] === a1 && p[1] === a2) || (p[0] === a2 && p[1] === a1);
+  });
 }
 
+/* 生肖关系全命中（顺序无关）：返回所有成立的传统关系 */
+function allAnimalRelations(a1, a2) {
+  const hits = [];
+  if (LIUHE[a1] === a2) hits.push("liuhe");
+  if (LIUCHONG[a1] === a2) hits.push("liuchong");
+  if (SANHE[a1] && SANHE[a1].indexOf(a2) !== -1) hits.push("sanhe");
+  if (LIUHAI[a1] === a2) hits.push("liuhai");
+  if (isXing(a1, a2)) hits.push("xing");
+  return hits;
+}
+
+const REL_SCORE = { liuhe: 92, liuchong: 45, sanhe: 82, liuhai: 58, xing: 55 };
+const REL_NAME = { liuhe: "六合", liuchong: "六冲", sanhe: "三合", liuhai: "六害", xing: "相刑" };
+const REL_ORDER = ["liuhe", "liuchong", "sanhe", "liuhai", "xing"];
+const REL_DESC = {
+  liuhe: "六合：传统说法指十二生肖两两相合的组合（子丑合、寅亥合、卯戌合、辰酉合、巳申合、午未合），主性格互补、相处融洽。",
+  liuchong: "六冲：传统说法指方位相对的生肖组合（子午冲、丑未冲、寅申冲、卯酉冲、辰戌冲、巳亥冲），主差异明显，需要更多理解与磨合。",
+  sanhe: "三合：传统三合局按地支三合方位组合（申子辰、寅午戌、巳酉丑、亥卯未），主气场合、互助支持。注意三合局与「三会」（寅卯辰、巳午未、申酉戌、亥子丑的季节会合）是不同概念，本页仅采用三合局，不混用三会。",
+  liuhai: "六害：传统说法指生肖相害组合（子未害、丑午害、寅巳害、卯辰害、申亥害、酉戌害），主相处需注意分寸与边界。",
+  xing: "相刑：传统说法指生肖刑克组合（如虎蛇相刑、牛羊相刑、猴蛇相刑等），主摩擦较多，宜多沟通化解，属民俗说法中的偏负面关系。",
+  other: "其他：不属于传统六合、三合、六冲、六害、相刑关系，属于普通组合，按民俗说法无显著倾向。"
+};
+
+/* 生肖关系判定（顺序无关）。主要关系优先级：六合 > 六冲 > 三合 > 六害 > 相刑 > 其他；
+   同一组合同时成立多种关系时，其余关系作为「兼有关系」一并返回，不隐藏交叉分类。 */
+function getAnimalRelation(a1, a2) {
+  const hits = allAnimalRelations(a1, a2);
+  if (hits.length === 0) return { type: "other", name: "其他", score: 68, secondary: [] };
+  hits.sort(function (x, y) { return REL_ORDER.indexOf(x) - REL_ORDER.indexOf(y); });
+  const primary = hits[0];
+  const secondary = hits.slice(1);
+  return { type: primary, name: REL_NAME[primary], score: REL_SCORE[primary], secondary: secondary };
+}
+
+/* ---------------- 五行关系（纳音，顺序无关） ---------------- */
+const SHENG = { "木": "火", "火": "土", "土": "金", "金": "水", "水": "木" };
+const KE = { "木": "土", "土": "水", "水": "火", "火": "金", "金": "木" };
+
+function fiveRelation(a, b) {
+  if (a === b) return "same";
+  if (SHENG[a] === b || SHENG[b] === a) return "sheng";
+  if (KE[a] === b || KE[b] === a) return "ke";
+  return "none";
+}
+
+/* ---------------- 契合度计算（完全确定性、顺序无关） ---------------- */
+function computeMatch(mySign, herSign, myAnimal, herAnimal, myLY, herLY) {
+  const rel = getAnimalRelation(myAnimal, herAnimal);
+  const base = rel.score;
+  const f1 = naYinFive(myLY);
+  const f2 = naYinFive(herLY);
+  const fr = fiveRelation(f1, f2);
+  let bonus = 0;
+  if (fr === "same") bonus = 1;
+  else if (fr === "sheng") bonus = 4;
+  else if (fr === "ke") bonus = -3;
+  const total = clampScore(base + bonus);
+  return { total: total, base: base, bonus: bonus, rel: rel, f1: f1, f2: f2, fr: fr, mySign: mySign, herSign: herSign, myAnimal: myAnimal, herAnimal: herAnimal };
+}
+
+/* ---------------- 年龄差与周岁 ---------------- */
+/* 两个生日相差 X 年 X 个月 X 天（取较晚者减较早者，使用 UTC 精确到日，处理月末溢出） */
+function ageDiff(y1, m1, d1, y2, m2, d2) {
+  const t1 = y1 * 10000 + m1 * 100 + d1;
+  const t2 = y2 * 10000 + m2 * 100 + d2;
+  let later, earlier;
+  if (t1 >= t2) { later = [y1, m1, d1]; earlier = [y2, m2, d2]; }
+  else { later = [y2, m2, d2]; earlier = [y1, m1, d1]; }
+  const laterDt = new Date(Date.UTC(later[0], later[1] - 1, later[2]));
+  // 生日纪念日：闰日（2/29）在平年按 2/28 过纪念日（避免 Date.UTC 溢出到 3/1 造成整年回退）
+  function anniversary(monthOffset) {
+    const total = earlier[1] - 1 + monthOffset;
+    const y = earlier[0] + Math.floor(total / 12);
+    const m = total % 12;
+    let d = earlier[2];
+    // 闰日（2/29）仅闰年存在：目标年为闰年时保留 2/29，平年按 2/28 过纪念日
+    if (m === 1 && d === 29 && !((y % 4 === 0 && y % 100 !== 0) || y % 400 === 0)) d = 28;
+    return new Date(Date.UTC(y, m, d));
+  }
+  let years = later[0] - earlier[0];
+  if (anniversary(years * 12) > laterDt) years--;
+  let months = 0;
+  while (true) {
+    if (anniversary(years * 12 + months + 1) > laterDt) break;
+    months++;
+  }
+  const base = anniversary(years * 12 + months);
+  let days = Math.round((laterDt - base) / 86400000);
+  if (days < 0) days = 0;
+  return {
+    years: years, months: months, days: days,
+    later: { y: later[0], m: later[1], d: later[2] },
+    earlier: { y: earlier[0], m: earlier[1], d: earlier[2] }
+  };
+}
+
+/* 中国标准时间（UTC+8）的"今天"：返回公历年/月/日 */
+function chinaToday() {
+  const t = new Date(Date.now() + 8 * 3600 * 1000);
+  return { y: t.getUTCFullYear(), m: t.getUTCMonth() + 1, d: t.getUTCDate() };
+}
+
+/* 按当前日期计算周岁（"当前"按中国标准时间） */
+function ageNow(y, m, d) {
+  const t = chinaToday();
+  let age = t.y - y;
+  if (t.m < m || (t.m === m && t.d < d)) age--;
+  return age;
+}
+
+/* 出生日期是否晚于今天（按中国标准时间判断） */
+function isFutureDate(y, m, d) {
+  const t = chinaToday();
+  const todayUTC = Date.UTC(t.y, t.m - 1, t.d);
+  return Date.UTC(y, m - 1, d) > todayUTC;
+}
+
+/* 是否立春临界日：该公历日恰为当年立春（仅含日期、不含交节时刻） */
+function isLichunCritical(y, m, d) {
+  return m === 2 && d === LICHUN[y - 1900];
+}
+
+/* 另一口径下的属相（用于临界日双生肖提示）：
+   BOUNDARY 为 lichun 时给出春节口径属相，为 spring 时给出立春口径属相 */
+function otherBoundaryAnimal(y, m, d) {
+  if (BOUNDARY === "lichun") {
+    const ly = lunarFromSolar(y, m, d).year;
+    return ANIMALS[((ly % 12) + 12) % 12];
+  }
+  const byLichun = (m > 2 || (m === 2 && d >= LICHUN[y - 1900])) ? y : y - 1;
+  return ANIMALS[(((byLichun % 12) + 12) % 12)];
+}
+
+/* ---------------- 每日运势 ---------------- */
 function getDailyFortune(year, month, day, shichen) {
   const seed = hashCode(year + "-" + month + "-" + day + "-" + (shichen || "all"));
   const rand = mulberry32(seed);
@@ -408,42 +644,14 @@ function pickN(pool, n, rand) {
   return out;
 }
 
-function getMatchScore(myYear, myMonth, myDay, herYear, herMonth, herDay) {
-  const mySign = getSign(myMonth, myDay);
-  const herSign = getSign(herMonth, herDay);
-  const myAnimal = getAnimal(myYear, myMonth, myDay);
-  const herAnimal = getAnimal(herYear, herMonth, herDay);
-  return computeMatch(mySign, herSign, myAnimal, herAnimal, myYear, herYear);
-}
-
-function computeMatch(mySign, herSign, myAnimal, herAnimal, myYear, herYear) {
-  const signScore = getSignScore(mySign, herSign);
-  const animalScore = getAnimalScore(myAnimal, herAnimal);
-  const rand = mulberry32(hashCode(mySign + herSign + myAnimal + herAnimal + myYear + herYear));
-  const micro = Math.floor(rand() * 13) - 6; // -6..6
-  const total = clampScore(signScore * 0.48 + animalScore * 0.37 + 62 * 0.15 + micro);
-  return { total, signScore, animalScore, mySign, herSign, myAnimal, herAnimal };
-}
-
+/* 契合度文字：弱化确定性措辞，采用"传统说法上…… + 相处建议" */
 function matchComment(res) {
-  let head;
-  if (res.total >= 88) head = "天作之合，命中注定的般配！";
-  else if (res.total >= 78) head = "十分般配，令人羡慕的默契组合。";
-  else if (res.total >= 68) head = "比较合适，用心经营可长久。";
-  else if (res.total >= 55) head = "缘分尚可，相处需要更多包容与理解。";
-  else head = "差异较大，需要付出更多努力磨合。";
-
-  const signTxt = res.signScore >= 80 ? "星座层面相当契合，志趣相投" :
-                  res.signScore >= 70 ? "星座层面较为和谐，互补发展" :
-                  "星座层面存在差异，需求同存异";
-  const animalTxt = res.animalScore >= 85 ? "属相六合相生，互旺运势" :
-                    res.animalScore >= 70 ? "属相相处和睦，彼此扶持" :
-                    "属相有冲克，需多些耐心包容";
-  return head + " " + res.mySign + "与" + res.herSign + "之间" + signTxt + "；" +
-         res.myAnimal + "与" + res.herAnimal + "，属相上" + animalTxt + "。";
+  const txt = RELATION_TEXT[res.rel.type];
+  return "传统说法上，" + res.myAnimal + "与" + res.herAnimal + "属" + res.rel.name + "关系。" + txt.desc + " " + txt.advice;
 }
 
-function getPersonalityScore(myType, herType, myYear, mySign, herYear, herSign) {
+/* ---------------- MBTI 性格搭配 ---------------- */
+function getPersonalityScore(myType, herType, myYear, herYear, mySign, herSign) {
   const dims = [
     { idx: 0, same: 9, diff: 2, label: "内外倾向", sameText: "同频", diffText: "互补" },
     { idx: 1, same: 10, diff: -2, label: "信息偏好", sameText: "同频", diffText: "互补" },
@@ -459,48 +667,68 @@ function getPersonalityScore(myType, herType, myYear, mySign, herYear, herSign) 
   });
   const signScore = getSignScore(mySign, herSign);
   score += Math.round((signScore - 70) * 0.3);
-  const rand = mulberry32(hashCode(myType + herType + myYear + herYear + mySign + herSign));
+  // 种子对双方参数排序后再拼接，保证交换双方顺序结果一致
+  const rand = mulberry32(hashCode([myType, herType].sort().join("+") + [myYear, herYear].sort().join("+") + [mySign, herSign].sort().join("+")));
   score += Math.floor(rand() * 12) - 6;
   score = clampScore(score);
   return { score, dimDetail, signScore, mySign, herSign };
 }
 
+function getSignScore(s1, s2) {
+  if (s1 === s2) return 78;
+  const e1 = ELEMENT[s1], e2 = ELEMENT[s2];
+  if (e1 === e2) return 86;
+  if ((e1 === "火" && e2 === "风") || (e1 === "风" && e2 === "火")) return 82;
+  if ((e1 === "土" && e2 === "水") || (e1 === "水" && e2 === "土")) return 80;
+  if ((e1 === "风" && e2 === "水") || (e1 === "水" && e2 === "风")) return 72;
+  if ((e1 === "火" && e2 === "土") || (e1 === "土" && e2 === "火")) return 70;
+  if ((e1 === "风" && e2 === "土") || (e1 === "土" && e2 === "风")) return 66;
+  if ((e1 === "火" && e2 === "水") || (e1 === "水" && e2 === "火")) return 60;
+  return 72;
+}
+
 function personalityComment(res) {
   let head;
-  if (res.score >= 90) head = "灵魂伴侣级别的默契，性格与三观高度共鸣！";
-  else if (res.score >= 80) head = "高度契合的黄金组合，相处轻松自然。";
-  else if (res.score >= 70) head = "搭配良好的理想组合，互相成就。";
+  if (res.score >= 90) head = "性格相似度极高，思维方式高度共鸣，传统说法上属于很合拍的组合。";
+  else if (res.score >= 80) head = "性格较为契合，相处自然，传统说法上倾向合拍。";
+  else if (res.score >= 70) head = "搭配较理想，性格上有不少互相成全之处。";
   else if (res.score >= 60) head = "性格互补，用心经营会越走越近。";
-  else if (res.score >= 50) head = "差异明显，重在理解与换位思考。";
-  else head = "挑战较多，需要大量沟通与磨合。";
-  const signTxt = res.signScore >= 80 ? "星座能量相互加成，为整体加分不少。" :
-                   res.signScore >= 70 ? "星座层面温和互补，带来稳定支持。" :
-                   "星座层面存在张力，建议多从性格维度寻找共识。";
+  else if (res.score >= 50) head = "差异较明显，重在理解与换位思考。";
+  else head = "差异较大，需要大量沟通与磨合。";
+  const signTxt = res.signScore >= 80 ? "星座层面传统说法偏合，可为整体参考加分。" :
+                  res.signScore >= 70 ? "星座层面温和互补，带来稳定支持。" :
+                  "星座层面存在张力，建议多从性格维度寻找共识。";
   return head + " " + signTxt;
 }
 
 /* ---------------- UI 初始化 ---------------- */
 function init() {
-  const now = new Date();
-  const curYear = now.getFullYear();
+  const now = chinaToday();
+  const curYear = now.y;
 
-  /* 每日运势默认今天 */
+  /* 每日运势默认今天（按中国标准时间） */
   $("daily-year").value = curYear;
-  $("daily-month").value = now.getMonth() + 1;
-  $("daily-day").value = now.getDate();
+  $("daily-month").value = now.m;
+  $("daily-day").value = now.d;
 
   /* 星空 */
   makeStars();
 
-  /* Tab 切换 */
-  document.querySelectorAll(".tab").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      document.querySelectorAll(".tab").forEach(function (b) { b.classList.remove("active"); });
-      btn.classList.add("active");
-      document.querySelectorAll(".panel").forEach(function (p) { p.classList.remove("active"); });
-      $(btn.dataset.tab).classList.add("active");
-    });
-  });
+  /* 分界口径切换 */
+  function setBoundary(mode) {
+    BOUNDARY = mode;
+    document.querySelectorAll(".bound-btn").forEach(function (b) { b.classList.remove("active"); });
+    $("btn-" + mode).classList.add("active");
+    $("boundary-note").textContent = "本页采用：" + boundaryText() + " · 默认按中国标准时间 · 采用民间传统说法，仅供娱乐参考";
+    $("match-result").classList.remove("show");
+    $("quick-result").classList.remove("show");
+  }
+  $("btn-spring").addEventListener("click", function () { setBoundary("spring"); });
+  $("btn-lichun").addEventListener("click", function () { setBoundary("lichun"); });
+
+  /* 首屏入口切换（生日速查 / 双人合盘） */
+  $("entry-quick").addEventListener("click", function () { switchEntry("quick"); });
+  $("entry-match").addEventListener("click", function () { switchEntry("match"); });
 
   /* 契合度方式切换 */
   document.querySelectorAll(".seg-btn").forEach(function (btn) {
@@ -510,10 +738,12 @@ function init() {
       const a = btn.dataset.mode === "a";
       $("match-a").classList.toggle("hidden", !a);
       $("match-b").classList.toggle("hidden", a);
+      $("match-result").classList.remove("show");
     });
   });
 
   /* 事件绑定 */
+  $("btn-quick").addEventListener("click", onQuick);
   $("btn-birth").addEventListener("click", onBirth);
   $("btn-daily").addEventListener("click", onDaily);
   $("btn-match").addEventListener("click", onMatch);
@@ -570,7 +800,168 @@ function barsHTML(items) {
   return html;
 }
 
-/* ---------------- 功能一：生日测算 ---------------- */
+/* 星座独立卡片（不参与生肖合盘评分，仅娱乐参考） */
+function signCardHTML(mySign, herSign) {
+  const a = SIGN_INFO[mySign], b = SIGN_INFO[herSign];
+  const bestA = SYM_BEST_MATCH[mySign].join("、");
+  const bestB = SYM_BEST_MATCH[herSign].join("、");
+  return (
+    '<div class="card sign-card">' +
+    '<h4>星座参考（独立娱乐卡片）</h4>' +
+    '<div class="sign-pair">' +
+    '<div class="sign-item"><b>' + mySign + '</b><span>' + a.element + '象 · ' + a.dates + '</span><small>' + esc(a.desc) + '</small></div>' +
+    '<div class="sign-vs">×</div>' +
+    '<div class="sign-item"><b>' + herSign + '</b><span>' + b.element + '象 · ' + b.dates + '</span><small>' + esc(b.desc) + '</small></div>' +
+    '</div>' +
+    '<p class="dim">' + mySign + '传统速配星座参考（双向对称）：' + bestA + '</p>' +
+    '<p class="dim">' + herSign + '传统速配星座参考（双向对称）：' + bestB + '</p>' +
+    '<p class="note-tip">注：星座按公历生日区间粗略判断，仅供娱乐参考，未含出生时间与出生地；速配列表已做双向对称处理（若 A 视 B 为速配，则 B 同样视 A 为速配），不参与上方生肖合盘评分。</p>' +
+    '</div>'
+  );
+}
+
+/* 当前日期文本（按中国标准时间） */
+function todayText() {
+  const t = chinaToday();
+  return t.y + " 年 " + t.m + " 月 " + t.d + " 日";
+}
+
+/* ---------------- 生肖年龄合盘：速配星座对称化 ---------------- */
+/* 只按原始速配表逐对补齐反向项：若 A 视 B 为速配，则 B 的列表补上 A（已在则跳过）。
+   仅做一轮补全，不基于已补全的动态列表反复传播，杜绝经由中间星座扩散出间接推荐 */
+function buildSymBestMatch() {
+  const m = {};
+  Object.keys(BEST_MATCH).forEach(function (k) { m[k] = BEST_MATCH[k].slice(); });
+  Object.keys(BEST_MATCH).forEach(function (x) {
+    BEST_MATCH[x].forEach(function (a) {
+      if (m[a] && m[a].indexOf(x) === -1) { m[a].push(x); }
+    });
+  });
+  return m;
+}
+const SYM_BEST_MATCH = buildSymBestMatch();
+
+/* ---------------- 生肖关系徽章（主要 + 兼有） ---------------- */
+function relationBadgesHTML(rel) {
+  let html = '<span class="rel-badge rel-' + rel.type + '">' + rel.name + '（主要）</span>';
+  (rel.secondary || []).forEach(function (t) {
+    html += '<span class="rel-badge rel-' + t + '">' + REL_NAME[t] + '（兼有）</span>';
+  });
+  return html;
+}
+
+/* ---------------- 临界日提示 ---------------- */
+function criticalNoteHTML(y, m, d, animal, noteId) {
+  const alt = otherBoundaryAnimal(y, m, d);
+  return '<div class="critical-note" id="' + noteId + '" role="note">' +
+    '<strong>临界日提示：</strong>' + y + ' 年 ' + m + ' 月 ' + d + ' 日恰为公历立春当日。本页的立春数据仅含日期、不含交节时刻；在未提供出生时间与出生地时区的情况下，无法精确判定分界，' +
+    (BOUNDARY === "lichun" ? "本页按日期近似判断（当日按新属相年，属" + animal + "）；若按春节口径，则属" + alt + "。" : "本页按春节口径属" + animal + "；若按立春日期近似判断，则属" + alt + "。") +
+    '</div>';
+}
+
+/* ---------------- 入口切换（生日速查 / 双人合盘） ---------------- */
+function switchEntry(target) {
+  const quick = target === "quick";
+  $("quick").classList.toggle("hidden", !quick);
+  $("match").classList.toggle("hidden", quick);
+  $("entry-quick").classList.toggle("active", quick);
+  $("entry-match").classList.toggle("active", !quick);
+  if (quick) $("match-result").classList.remove("show");
+  else $("quick-result").classList.remove("show");
+}
+
+/* ---------------- 功能零：生日速查（首屏，只收一个公历生日） ---------------- */
+function onQuick() {
+  const v = String($("quick-date").value || "").trim();
+  if (!v) {
+    alert("请选择你的公历生日（点击输入框可打开日期选择器）");
+    return;
+  }
+  const parts = v.split("-");
+  if (parts.length !== 3) {
+    alert("日期格式不正确，请重新选择");
+    return;
+  }
+  const y = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  const d = parseInt(parts[2], 10);
+  if (isNaN(y) || isNaN(m) || isNaN(d)) {
+    alert("日期格式不正确，请重新选择");
+    return;
+  }
+  if (y < YEAR_MIN || y > YEAR_MAX) {
+    alert("年份需在 " + YEAR_MIN + "-" + YEAR_MAX + " 之间，请重新选择");
+    return;
+  }
+  if (m < 1 || m > 12) {
+    alert("月份需在 1-12 之间，请重新选择");
+    return;
+  }
+  const max = daysInMonth(y, m);
+  if (d < 1 || d > max) {
+    alert("日期超出范围：" + m + " 月只有 " + max + " 天，请重新选择");
+    return;
+  }
+  if (isFutureDate(y, m, d)) {
+    alert("出生日期不能晚于今天，请确认后重新选择");
+    return;
+  }
+  if (!checkLunarRange(y, m, d)) return;
+
+  const sign = getSign(m, d);
+  const sInfo = SIGN_INFO[sign];
+  const lunar = lunarFromSolar(y, m, d);
+  const ly = getLunarYear(y, m, d);
+  const animal = ANIMALS[((ly % 12) + 12) % 12];
+  const info = ANIMAL_INFO[animal];
+  const best = SYM_BEST_MATCH[sign];
+  const critical = isLichunCritical(y, m, d);
+
+  const html =
+    '<div class="card">' +
+    '<div class="badge-row">' +
+    '<div class="badge">' + y + ' 年 ' + m + ' 月 ' + d + ' 日（公历）<small>输入的出生日期</small></div>' +
+    '</div>' +
+    '<div class="badge-row">' +
+    '<div class="badge">生肖：<b>' + animal + '</b><small>农历' + lunar.year + '年 · 分界口径：' + boundaryText() + '</small></div>' +
+    '<div class="badge">' + sign + '<small>' + sInfo.dates + ' · ' + sInfo.element + '象星座</small></div>' +
+    '</div>' +
+    (critical ? criticalNoteHTML(y, m, d, animal, "quick-critical") : "") +
+    '<h4>星座</h4>' +
+    '<p>西方太阳星座按公历日期区间判定（' + sInfo.dates + '，' + sInfo.element + '象）。' + esc(sInfo.desc) + '</p>' +
+    '<h4>农历生日（与生肖年分开表述）</h4>' +
+    '<p>' + lunarDateText(lunar) + '。农历生日按农历历法转换得到，与「生肖按分界口径取农历年份」是两套表述，互不影响。</p>' +
+    '<h4>传统性格与民俗参考</h4>' +
+    '<p>' + esc(info.personality) + '</p>' +
+    '<p class="dim">传统生肖文化中的常见象征：' + esc(info.fortune) + '</p>' +
+    '<h4>适合的恋爱对象星座（速配参考，双向对称）</h4>' +
+    '<div class="chips">' + best.map(function (s) { return '<span class="chip">' + s + '</span>'; }).join("") + '</div>' +
+    '<p class="note-tip">免责声明：以上内容为传统生肖、星座与民俗文化的娱乐参考，不是科学预测，也不构成完整八字或星盘排盘（未含出生时间与出生地时无法排盘）；请勿据此做出重大现实决策。</p>' +
+    '<button id="btn-continue-match" class="btn-secondary" type="button" onclick="continueToMatch()">用这个人继续做双人合盘 →</button>' +
+    '</div>';
+
+  showResult("quick-result", html);
+}
+
+/* 从生日速查结果带入双人合盘「我的出生信息」，并切到合盘入口 */
+function continueToMatch() {
+  const v = String($("quick-date").value || "").trim();
+  const parts = v.split("-");
+  if (parts.length !== 3) {
+    alert("请先完成生日速查，再继续双人合盘");
+    return;
+  }
+  $("match-my-year").value = parts[0];
+  $("match-my-month").value = String(parseInt(parts[1], 10));
+  $("match-my-day").value = String(parseInt(parts[2], 10));
+  switchEntry("match");
+  const panel = $("match");
+  if (panel && typeof panel.scrollIntoView === "function") {
+    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+/* ---------------- 功能一：我的生辰测算 ---------------- */
 function onBirth() {
   const year = parseYear($("birth-year").value, "出生");
   if (year === null) return;
@@ -578,6 +969,7 @@ function onBirth() {
   if (month === null) return;
   const day = parseDay($("birth-day").value, "出生", year, month);
   if (day === null) return;
+  if (!checkLunarRange(year, month, day)) return;
   const shichen = parseShichen($("birth-shichen").value, true);
   if (shichen === null) return;
 
@@ -586,7 +978,8 @@ function onBirth() {
   const animal = getAnimal(year, month, day);
   const info = ANIMAL_INFO[animal];
   const sInfo = SIGN_INFO[sign];
-  const best = BEST_MATCH[sign];
+  const best = SYM_BEST_MATCH[sign];
+  const ly = getLunarYear(year, month, day);
 
   let shiText = "";
   if (shichen) {
@@ -600,11 +993,11 @@ function onBirth() {
     '<div class="card">' +
     '<div class="badge-row">' +
     '<div class="badge">♈ ' + sign + '<small>' + sInfo.dates + ' · ' + sInfo.element + '象星座</small></div>' +
-    '<div class="badge">属相：' + animal + '<small>农历' + lunar.year + '年 · 五行属' + info.element + '</small></div>' +
+    '<div class="badge">属相：' + animal + '<small>' + boundaryText() + ' · 农历' + lunar.year + '年 · 纳音五行属' + naYinFive(ly) + '（' + ganzhi(ly) + '）</small></div>' +
     '</div>' +
     '<h4>星座性格</h4><p>' + esc(sInfo.desc) + '</p>' +
     '<h4>属相性格</h4><p>' + esc(info.personality) + '</p>' +
-    '<h4>运势简述</h4><p>' + esc(info.fortune) + '</p>' +
+    '<h4>传统民俗象征</h4><p>' + esc(info.fortune) + '</p>' +
     '<h4>适合的恋爱对象星座</h4>' +
     '<div class="chips">' + best.map(function (s) { return '<span class="chip">' + s + '</span>'; }).join("") + '</div>' +
     '<p class="dim">农历生日：' + lunarDateText(lunar) + '</p>' +
@@ -622,6 +1015,7 @@ function onDaily() {
   if (month === null) return;
   const day = parseDay($("daily-day").value, "", year, month);
   if (day === null) return;
+  if (!checkLunarRange(year, month, day)) return;
   const shichen = parseShichen($("daily-shichen").value, true);
   if (shichen === null) return;
 
@@ -643,7 +1037,7 @@ function onDaily() {
     ringHTML(f.overall, "综合运势") +
     '<div><div class="level-tag" style="color:' + levelColor + ';border-color:' + levelColor + 'aa;background:' + levelColor + '22">' + level + '</div>' +
     '<p style="margin-top:10px;font-size:14px;">' + year + '年' + month + '月' + day + '日 · 农历' + lunarDateText(lunar) + '<br>' +
-    (shichen ? shichen + "时" : "全天") + '<br><span class="dim">当日星座：' + sign + ' · 属相：' + animal + '</span></p></div>' +
+    (shichen ? shichen + "时" : "全天") + '<br><span class="dim">当日星座：' + sign + ' · 属相：' + animal + '（' + boundaryText() + '）</span></p></div>' +
     '</div>' +
     '<h4>分项运势</h4>' +
     barsHTML([
@@ -664,7 +1058,7 @@ function onDaily() {
   showResult("daily-result", html);
 }
 
-/* ---------------- 功能三：情侣契合度 ---------------- */
+/* ---------------- 功能三：情侣契合（生肖年龄合盘，主功能） ---------------- */
 function onMatch() {
   const mode = document.querySelector(".seg-btn.active").dataset.mode;
   const myYear = parseYear($("match-my-year").value, "我的");
@@ -673,9 +1067,15 @@ function onMatch() {
   if (myMonth === null) return;
   const myDay = parseDay($("match-my-day").value, "我的", myYear, myMonth);
   if (myDay === null) return;
+  if (!checkLunarRange(myYear, myMonth, myDay)) return;
+  if (isFutureDate(myYear, myMonth, myDay)) { alert("我的出生日期不能晚于今天，请确认后重新填写"); return; }
 
-  let res;
-  let approxNote = "";
+  const mySign = getSign(myMonth, myDay);
+  const myAnimal = getAnimal(myYear, myMonth, myDay);
+  const myLY = getLunarYear(myYear, myMonth, myDay);
+
+  let res, approxNote = "", ageBlock = "", criticalNote = "";
+  if (isLichunCritical(myYear, myMonth, myDay)) criticalNote += criticalNoteHTML(myYear, myMonth, myDay, myAnimal, "match-critical-my");
   if (mode === "a") {
     const herYear = parseYear($("match-her-year").value, "对方");
     if (herYear === null) return;
@@ -683,40 +1083,68 @@ function onMatch() {
     if (herMonth === null) return;
     const herDay = parseDay($("match-her-day").value, "对方", herYear, herMonth);
     if (herDay === null) return;
-    res = getMatchScore(myYear, myMonth, myDay, herYear, herMonth, herDay);
+    if (!checkLunarRange(herYear, herMonth, herDay)) return;
+    if (isFutureDate(herYear, herMonth, herDay)) { alert("对方出生日期不能晚于今天，请确认后重新填写"); return; }
+    if (isLichunCritical(herYear, herMonth, herDay)) criticalNote += criticalNoteHTML(herYear, herMonth, herDay, getAnimal(herYear, herMonth, herDay), "match-critical-her");
+
+    const herSign = getSign(herMonth, herDay);
+    const herAnimal = getAnimal(herYear, herMonth, herDay);
+    const herLY = getLunarYear(herYear, herMonth, herDay);
+    res = computeMatch(mySign, herSign, myAnimal, herAnimal, myLY, herLY);
+
+    /* 年龄差独立展示（不混入契合度分数，不构成合/不合判断） */
+    const diff = ageDiff(myYear, myMonth, myDay, herYear, herMonth, herDay);
+    const myAge = ageNow(myYear, myMonth, myDay);
+    const herAge = ageNow(herYear, herMonth, herDay);
+    const myBirthInt = myYear * 10000 + myMonth * 100 + myDay;
+    const herBirthInt = herYear * 10000 + herMonth * 100 + herDay;
+    const elderText = myBirthInt < herBirthInt ? "我的年龄更大" : myBirthInt > herBirthInt ? "对方年龄更大" : "同年同月同日生";
+    ageBlock =
+      '<div class="card age-card">' +
+      '<h4>年龄差（独立展示，不参与契合度评分）</h4>' +
+      '<div class="age-diff">相差 <b>' + diff.years + '</b> 年 <b>' + diff.months + '</b> 个月 <b>' + diff.days + '</b> 天 · ' + elderText + '</div>' +
+      '<div class="age-now">我的周岁：<b>' + myAge + '</b> 岁（' + myYear + ' 年 ' + myMonth + ' 月 ' + myDay + ' 日，公历）</div>' +
+      '<div class="age-now">对方周岁：<b>' + herAge + '</b> 岁（' + herYear + ' 年 ' + herMonth + ' 月 ' + herDay + ' 日，公历）</div>' +
+      '<p class="dim">周岁按今日（' + todayText() + '）计算，生日当天未过不算增长；年龄差仅按日期如实展示，不构成「相差几岁就合/不合」的判断依据，也不影响上方生肖关系分。</p>' +
+      '</div>';
   } else {
     const herYear = parseYear($("match-her-year2").value, "对方");
     if (herYear === null) return;
     const herSign = parseSign($("match-her-sign").value, "对方");
     if (herSign === null) return;
-    const mySign = getSign(myMonth, myDay);
-    const myAnimal = getAnimal(myYear, myMonth, myDay);
-    const herAnimal = getAnimal(herYear);
-    approxNote = '<p class="dim">注：未填写对方出生月日，对方属相按公历年份对应的农历年估算。</p>';
-    res = computeMatch(mySign, herSign, myAnimal, herAnimal, myYear, herYear);
+    const herAnimal = getAnimalByYearOnly(herYear);
+    const herLY = getLunarYearByYearOnly(herYear);
+    approxNote = '<p class="dim">注：未填写对方出生月日，对方属相按公历年份对应的生肖年估算，且无法计算精确年龄差与周岁。</p>';
+    res = computeMatch(mySign, herSign, myAnimal, herAnimal, myLY, herLY);
   }
 
+  const frText = res.fr === "same" ? "纳音五行相同" : res.fr === "sheng" ? "纳音五行相生" : "纳音五行相克";
+  const levelText = res.total >= 85 ? "传统说法偏合" : res.total >= 70 ? "较为和睦" : res.total >= 55 ? "尚可相处" : "需多沟通";
   const html =
     '<div class="card">' +
     '<div class="score-head">' +
-    ringHTML(res.total, "契合度") +
+    ringHTML(res.total, "民俗趣味参考值") +
     '<div><div class="level-tag" style="color:' + scoreColor(res.total) + ';border-color:' + scoreColor(res.total) + 'aa;background:' + scoreColor(res.total) + '22">' +
-    (res.total >= 88 ? "天作之合" : res.total >= 78 ? "十分般配" : res.total >= 68 ? "比较合适" : res.total >= 55 ? "缘分尚可" : "需要磨合") + '</div>' +
-    '<p style="margin-top:10px;font-size:14px;">' + res.mySign + '（属' + res.myAnimal + '） × ' + res.herSign + '（属' + res.herAnimal + '）</p></div>' +
+    levelText + '</div>' +
+    '<p style="margin-top:10px;font-size:14px;">' + res.myAnimal + ' × ' + res.herAnimal + ' · ' + res.rel.name + '关系</p>' +
+    '<p class="dim" style="font-size:12.5px;">' + boundaryText() + ' · 生肖关系按民间传统说法</p></div>' +
     '</div>' +
-    '<h4>契合度分析</h4>' +
-    barsHTML([
-      { name: "星座契合", score: res.signScore },
-      { name: "属相契合", score: res.animalScore }
-    ]) +
+    '<h4>生肖关系</h4>' +
+    '<div class="rel-line">' + relationBadgesHTML(res.rel) +
+    '<span>' + res.myAnimal + '（' + myYear + ' 年生） × ' + res.herAnimal + '（' + (mode === "a" ? $("match-her-year").value : $("match-her-year2").value) + ' 年生）</span></div>' +
     '<h4>综合评价</h4><p>' + esc(matchComment(res)) + '</p>' +
-    approxNote +
-    '</div>';
+    '<p class="note-tip">' + esc(REL_DESC[res.rel.type]) + '</p>' +
+    '<p class="note-tip">趣味分数构成：生肖关系基础分 ' + res.base + ' 分 + 纳音五行微调 ' + (res.bonus >= 0 ? "+" : "") + res.bonus + ' 分 = ' + res.total + ' 分。“民俗趣味参考值”为程序按固定规则生成的娱乐分值，并非恋爱成功率；不含随机扰动，相同输入永远得到相同结果，交换双方顺序结果一致。</p>' +
+    '<p class="note-tip">五行参考：' + res.myAnimal + '年柱纳音属' + res.f1 + '，' + res.herAnimal + '年柱纳音属' + res.f2 + '，' + frText + '（按农历年干支纳音五行口径，仅作次要参考，不伪装精确权重）</p>' +
+    approxNote + criticalNote +
+    '</div>' +
+    ageBlock +
+    signCardHTML(mySign, res.herSign);
 
   showResult("match-result", html);
 }
 
-/* ---------------- 功能四：性格搭配 ---------------- */
+/* ---------------- 功能四：性格搭配（MBTI，更多玩法） ---------------- */
 function onPersonality() {
   const myType = parseMBTI($("per-my-type").value, "我的");
   if (myType === null) return;
@@ -731,7 +1159,7 @@ function onPersonality() {
   const herSign = parseSign($("per-her-sign").value, "对方");
   if (herSign === null) return;
 
-  const res = getPersonalityScore(myType, herType, myYear, mySign, herYear, herSign);
+  const res = getPersonalityScore(myType, herType, myYear, herYear, mySign, herSign);
   const myName = MBTI_LIST.find(function (x) { return x[0] === myType; })[1];
   const herName = MBTI_LIST.find(function (x) { return x[0] === herType; })[1];
 
@@ -745,13 +1173,13 @@ function onPersonality() {
     '<div class="score-head">' +
     ringHTML(res.score, "整体评分") +
     '<div><div class="level-tag" style="color:' + scoreColor(res.score) + ';border-color:' + scoreColor(res.score) + 'aa;background:' + scoreColor(res.score) + '22">' +
-    (res.score >= 90 ? "灵魂伴侣" : res.score >= 80 ? "高度契合" : res.score >= 70 ? "良好搭配" : res.score >= 60 ? "互补经营" : res.score >= 50 ? "差异明显" : "挑战较多") + '</div>' +
+    (res.score >= 90 ? "很合拍" : res.score >= 80 ? "较合拍" : res.score >= 70 ? "良好搭配" : res.score >= 60 ? "互补经营" : res.score >= 50 ? "差异明显" : "挑战较多") + '</div>' +
     '<p style="margin-top:10px;font-size:14px;">' + myType + ' ' + myName + ' × ' + herType + ' ' + herName + '<br>' +
     '<span class="dim">' + mySign + '（' + myYear + '年） × ' + herSign + '（' + herYear + '年）</span></p></div>' +
     '</div>' +
     '<h4>性格维度分析</h4>' + dimRows +
     '<h4>综合评价</h4><p>' + esc(personalityComment(res)) + '</p>' +
-    '<p class="dim">本评分独立于「情侣契合度」，仅从性格与星座能量角度评估搭配。</p>' +
+    '<p class="dim">本评分独立于「生肖年龄合盘」，仅从性格与星座能量角度评估搭配，星座仅作参考。</p>' +
     '</div>';
 
   showResult("personality-result", html);
